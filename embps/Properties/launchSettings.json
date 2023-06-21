@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "embps": {
+      "commandName": "Project",
+      "commandLineArgs": "$(ProjectDir)"
+    }
+  }
+}
