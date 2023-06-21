@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using somelib;
+using System.Diagnostics;
 using System.Management.Automation.Runspaces;
 
 /*
@@ -44,6 +45,8 @@ namespace EmbedPSExample
                 new SessionStateVariableEntry("testvar", "testvar_value", "iss test 1"),
                 // $testvar_copmlex # this is an object of type [TestVarComplex]
                 new SessionStateVariableEntry("testvar_complex", new TestVarComplex(), "iss test 2"),
+
+                new SessionStateVariableEntry("otherassembly_item", new Thingamajig<int>(new[]{ 1,2,3 }), "iss test 3"),
             };
 
             // initialize the manager's runspace pool, and pass the list of variables that we defined above.

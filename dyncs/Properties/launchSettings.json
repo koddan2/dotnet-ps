@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "dyncs": {
+      "commandName": "Project",
+      "commandLineArgs": "$(ProjectDir)"
+    }
+  }
+}

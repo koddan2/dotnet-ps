@@ -1,0 +1,56 @@
+ 1.  using System.Net.Http;
+ 2.  using System;
+ 3.  using System.Threading.Tasks;
+ 4.  using somelib;
+ 5.  using Microsoft.Extensions.DependencyInjection;
+ 6.  using System.Diagnostics;
+ 7.  using dyncs;
+ 8.  
+ 9.  #nullable enable
+10.  
+11.  namespace scripts
+12.  {
+13.      public class Test : IScriptInterface
+14.      {
+15.          public record Arecord(int Val);
+16.          readonly Arecord _inst = new(42);
+17.          public Arecord GetArecord()
+18.          {
+19.              Console.WriteLine(_inst);
+20.              return _inst;
+21.          }
+22.  
+23.          public static async Task<string> DoAsync(IServiceProvider prov)
+24.          {
+25.              object? o = null;
+26.              Console.WriteLine("Hello from script" + o);
+27.  
+28.              var a = new Thingamajig<int>(1, 2, 3);
+29.              Console.WriteLine("Hello: {0}", a.Count);
+30.  
+31.              var http = new HttpClient();
+32.              var resp = await http.GetAsync("http://example.org");
+33.              Console.WriteLine(resp.StatusCode);
+34.              var content = await resp.Content.ReadAsStringAsync();
+35.              Console.WriteLine(content.Length);
+36.  
+37.              var p = prov.GetRequiredService<Thingamajig<int>>();
+38.              Debug.Assert(p.Count == 3);
+39.  
+40.              throw new ApplicationException();
+41.              await Task.Delay(10);
+42.              return content;
+43.          }
+44.  
+45.          async Task<ScriptInvocationResult> IScriptInterface.ExecuteAsync(IServiceProvider serviceProvider)
+46.          {
+47.              this.GetArecord();
+48.              var msg = await DoAsync(serviceProvider);
+49.              return new ScriptInvocationResult
+50.              {
+51.                  Error = false,
+52.                  Message = msg
+53.              };
+54.          }
+55.      }
+56.  }

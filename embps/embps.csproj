@@ -12,6 +12,10 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\somelib\somelib.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
       <None Update="stuff.ps1">
         <CopyToOutputDirectory>Never</CopyToOutputDirectory>
       </None>
