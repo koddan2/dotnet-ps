@@ -2,7 +2,7 @@
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
 
-namespace PsEmbed
+namespace EmbedPSExample
 {
     public class StreamCallbacks
     {
@@ -12,6 +12,12 @@ namespace PsEmbed
         public Action<ErrorRecord>? Error { get; set; }
         public Action<DebugRecord>? Debug { get; set; }
         public Action<ProgressRecord>? Progress { get; set; }
+    }
+
+    public enum InitialSessionStateCreationSetting
+    {
+        Default,
+        Restricted,
     }
 
     public class PsRunspaceManager : IDisposable
@@ -26,7 +32,9 @@ namespace PsEmbed
             int maxRunspaces = 4,
             IEnumerable<string>? modulesToLoad = null,
             ExecutionPolicy executionPolicy = ExecutionPolicy.Default,
-            IEnumerable<SessionStateVariableEntry>? sessionStateVariables = null)
+            IEnumerable<SessionStateVariableEntry>? sessionStateVariables = null,
+            PSThreadOptions psThreadOptions = PSThreadOptions.Default,
+            InitialSessionStateCreationSetting initialSessionStateCreationSetting = default)
         {
             modulesToLoad ??= Array.Empty<string>();
             sessionStateVariables ??= Array.Empty<SessionStateVariableEntry>();
@@ -34,7 +42,11 @@ namespace PsEmbed
             // create the default session state.
             // session state can be used to set things like execution policy, language constraints, etc.
             // optionally load any modules (by name) that were supplied.
-            var defaultSessionState = InitialSessionState.CreateDefault();
+            var defaultSessionState = initialSessionStateCreationSetting switch
+            {
+                InitialSessionStateCreationSetting.Default => InitialSessionState.CreateDefault(),
+                InitialSessionStateCreationSetting.Restricted => InitialSessionState.CreateRestricted(SessionCapabilities.Language),
+            };
 
             defaultSessionState.ExecutionPolicy = executionPolicy;
 
@@ -53,47 +65,30 @@ namespace PsEmbed
             RunspacePool = RunspaceFactory.CreateRunspacePool(defaultSessionState);
             RunspacePool.SetMinRunspaces(minRunspaces);
             RunspacePool.SetMaxRunspaces(maxRunspaces);
+            RunspacePool.ThreadOptions = psThreadOptions;
 
-            // set the pool options for thread use.
-            // we can throw away or re-use the threads depending on the usage scenario.
-            RunspacePool.ThreadOptions = PSThreadOptions.UseNewThread;
-
-            ////void Opened(IAsyncResult result)
-            ////{
-            ////};
-
-            // open the pool. 
-            // this will start by initializing the minimum number of runspaces.
-            ////RunspacePool.Open();
-            //var asyncRes = (/*Opened*/null, null);
-            ////await Task.Run(() =>
-            ////{
-            ////    asyncRes.AsyncWaitHandle.WaitOne();
-            ////    RunspacePool.EndOpen(asyncRes);
-            ////});
             await Task.Factory.FromAsync(RunspacePool.BeginOpen(null, null), RunspacePool.EndOpen);
         }
 
-        public async Task<PSDataCollection<PSObject>> ExecutePowershellCodeAsync(string powershellCode, Dictionary<string, object>? scriptParameters = null, StreamCallbacks? streamCallbacks = null)
+        public async Task<PSDataCollection<PSObject>> ExecutePowershellCodeAsync(
+            string powershellCode,
+            Dictionary<string, object>? scriptParameters = null,
+            StreamCallbacks? streamCallbacks = null)
         {
             scriptParameters ??= new();
 
             if (RunspacePool is null)
             {
-                throw new ApplicationException($"Runspace pool must be initialized before calling {nameof(ExecutePowershellCodeAsync)}.");
+                throw new ApplicationException($"The runspace pool must be initialized before calling {nameof(ExecutePowershellCodeAsync)}.");
             }
 
             // create a new hosted PowerShell instance using a custom runspace.
             // wrap in a using statement to ensure resources are cleaned up.
             using PowerShell ps = PowerShell.Create();
 
-            // use the runspace pool.
+            // Important: use the manager's runspace pool.
             ps.RunspacePool = RunspacePool;
-
-            // specify the script code to run.
             ps.AddScript(powershellCode);
-
-            // specify the parameters to pass into the script.
             ps.AddParameters(scriptParameters);
 
             void Stream_DataAdded(object? sender, DataAddedEventArgs e)
