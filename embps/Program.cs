@@ -31,7 +31,7 @@ namespace EmbedPSExample
                     new SessionStateVariableEntry("testvar", "testvar_value", "iss test 1"),
                     new SessionStateVariableEntry("testvar_complex", new TestVarComplex(), "iss test 1"),
                 };
-                manager.Initialize(sessionStateVariables: sessionStateVariables);
+                await manager.InitializeAsync(sessionStateVariables: sessionStateVariables);
                 var result = await manager.ExecutePowershellCodeAsync(pscode, streamCallbacks: new StreamCallbacks
                 {
                     Information = (record) => Console.WriteLine("I: {0}", record),
@@ -41,6 +41,12 @@ namespace EmbedPSExample
 
                     Progress = (record) => Console.Write($"\rP: {record.PercentComplete,3}%{(record.PercentComplete >= 100 ? Environment.NewLine : "")}"),
                 });
+
+                foreach (var item in result)
+                {
+                    Console.WriteLine(item);
+                }
+
                 return 0;
             }
             catch (Exception ex)

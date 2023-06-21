@@ -21,7 +21,7 @@ namespace PsEmbed
         /// </summary>
         private RunspacePool? RunspacePool { get; set; }
 
-        public void Initialize(
+        public async Task InitializeAsync(
             int minRunspaces = 1,
             int maxRunspaces = 4,
             IEnumerable<string>? modulesToLoad = null,
@@ -58,9 +58,20 @@ namespace PsEmbed
             // we can throw away or re-use the threads depending on the usage scenario.
             RunspacePool.ThreadOptions = PSThreadOptions.UseNewThread;
 
+            ////void Opened(IAsyncResult result)
+            ////{
+            ////};
+
             // open the pool. 
             // this will start by initializing the minimum number of runspaces.
-            RunspacePool.Open();
+            ////RunspacePool.Open();
+            //var asyncRes = (/*Opened*/null, null);
+            ////await Task.Run(() =>
+            ////{
+            ////    asyncRes.AsyncWaitHandle.WaitOne();
+            ////    RunspacePool.EndOpen(asyncRes);
+            ////});
+            await Task.Factory.FromAsync(RunspacePool.BeginOpen(null, null), RunspacePool.EndOpen);
         }
 
         public async Task<PSDataCollection<PSObject>> ExecutePowershellCodeAsync(string powershellCode, Dictionary<string, object>? scriptParameters = null, StreamCallbacks? streamCallbacks = null)
