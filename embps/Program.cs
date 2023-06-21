@@ -1,4 +1,5 @@
-﻿using System.Management.Automation.Runspaces;
+﻿using System.Diagnostics;
+using System.Management.Automation.Runspaces;
 
 /*
 <ItemGroup>
@@ -14,20 +15,13 @@ namespace EmbedPSExample
         public string StringVal { get; set; } = "hello, world!";
     }
 
-    internal class Program
+    internal static class Program
     {
-        public Program(string[] args)
-        {
-            Args = args;
-        }
-
-        public string[] Args { get; }
-
         static async Task<int> Main(string[] args)
         {
             try
             {
-                return await new Program(args).RunAsync();
+                return await RunAsync(args);
             }
             catch (Exception ex)
             {
@@ -36,33 +30,42 @@ namespace EmbedPSExample
             }
         }
 
-        private async Task<int> RunAsync()
+        private static async Task<int> RunAsync(string[] args)
         {
-            var pscode = File.ReadAllText(Path.Combine(Args[0], "stuff.ps1"));
-            ////await RunScript(pscode);
-
+            var sw = Stopwatch.StartNew();
+            Console.WriteLine("Initializing ...");
+            // instantiate the runspace manager (this does not initialize anything, so is relatively cheap).
             using var manager = new PsRunspaceManager();
-            List<SessionStateVariableEntry> sessionStateVariables = new()
-                {
-                    new SessionStateVariableEntry("testvar", "testvar_value", "iss test 1"),
-                    new SessionStateVariableEntry("testvar_complex", new TestVarComplex(), "iss test 2"),
-                };
-            await manager.InitializeAsync(sessionStateVariables: sessionStateVariables);
-            var result = await manager.ExecutePowershellCodeAsync(pscode, streamCallbacks: new StreamCallbacks
-            {
-                Information = (record) => Console.WriteLine("I: {0}", record),
-                Verbose = (record) => Console.WriteLine("V: {0}", record),
-                Warning = (record) => Console.WriteLine("W: {0}", record),
-                Error = (record) => Console.WriteLine("E: {0}", record),
-                Debug = (record) => Console.WriteLine("E: {0}", record),
-                Progress = (record) => Console.Write(
-                    $"\rP: {record.PercentComplete,3}% {record.Activity} [{string.Concat(Enumerable.Range(0, record.PercentComplete / 2).Select(_ => '#')),-50}]{(record.PercentComplete >= 100 ? Environment.NewLine : "")}"),
-            });
 
+            // specify variables that should be available to the powershell code
+            List<SessionStateVariableEntry> sessionStateVariables = new()
+            {
+                // $testvar # this is a [string]
+                new SessionStateVariableEntry("testvar", "testvar_value", "iss test 1"),
+                // $testvar_copmlex # this is an object of type [TestVarComplex]
+                new SessionStateVariableEntry("testvar_complex", new TestVarComplex(), "iss test 2"),
+            };
+
+            // initialize the manager's runspace pool, and pass the list of variables that we defined above.
+            await manager.InitializeAsync(maxRunspaces: 1, sessionStateVariables: sessionStateVariables);
+
+            Console.WriteLine("Initialized. Timing: {0}", sw.Elapsed);
+
+            // get a hold of some powershell code
+            var pscode = File.ReadAllText(Path.Combine(args[0], "stuff.ps1"));
+
+            // execute the code
+            var output = new ConsoleStreamCallbacks();
+            ////var output = new TextWriterStreamCallbacks(Console.Out);
+            var result = await manager.ExecutePowershellCodeAsync(pscode, streamCallbacks: output);
+
+            // do something with the result (i.e. the pipeline objects that the powershell code yielded)
             foreach (var item in result)
             {
                 Console.WriteLine(item);
             }
+
+            Console.WriteLine("Done! Timing: {0}", sw.Elapsed);
 
             return 0;
         }
