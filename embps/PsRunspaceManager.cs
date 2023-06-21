@@ -147,6 +147,7 @@ namespace PsEmbed
         public void Dispose()
         {
             RunspacePool?.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

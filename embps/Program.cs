@@ -60,10 +60,7 @@ namespace EmbedPSExample
         /// <param name="scriptParameters">A dictionary of parameter names and parameter values.</param>
         public static async Task RunScript(string powershellCode, Dictionary<string, object>? scriptParameters = null)
         {
-            if (scriptParameters is null)
-            {
-                scriptParameters = new();
-            }
+            scriptParameters ??= new();
 
             // see https://learn.microsoft.com/en-us/powershell/scripting/developer/hosting/creating-an-initialsessionstate?view=powershell-7.3
             var initialSessionState = InitialSessionState.CreateDefault();
